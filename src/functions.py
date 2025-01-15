@@ -1,4 +1,3 @@
-from googleapiclient.discovery import build
 import base64
 import pandas as pd
 from email.message import EmailMessage
@@ -6,25 +5,12 @@ from email import policy
 import os
 import pickle
 # Gmail API utils
-from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 # for encoding/decoding messages in base64
-from base64 import urlsafe_b64decode, urlsafe_b64encode
 # for dealing with attachement MIME types
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
-from email.mime.audio import MIMEAudio
-from email.mime.base import MIMEBase
-from mimetypes import guess_type as guess_mime_type
-from dotenv import load_dotenv
-
-load_dotenv('credentials.env')
-
-# Acceder a las credenciales
-
-PASSWORD = os.getenv('PASSWORD')
+import re
+import unicodedata
 
 # Request all access (permission to read/send/receive emails, manage the inbox, and more)
 SCOPES = ['https://mail.google.com/']
@@ -100,3 +86,31 @@ def authenticate():
             pickle.dump(creds, token)
     
     return creds
+
+def clean_email_content(content):
+    try:
+        # 1. Eliminar referencias de imágenes o indicadores (e.g., "[image: Google]")
+        content = re.sub(r'\[image:[^\]]+\]', '', content)
+
+        # 2. Eliminar direcciones de correo electrónico
+        content = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '', content)
+
+        # 3. Eliminar URLs
+        content = re.sub(r'http\S+|www\S+|https\S+', '', content, flags=re.MULTILINE)
+
+        # 4. Eliminar caracteres especiales (excepto espacios)
+        content = re.sub(r'[^\w\s]', '', content)
+
+        # 5. Normalizar texto para eliminar tildes y caracteres Unicode
+        content = unicodedata.normalize("NFKD", content).encode("ascii", "ignore").decode("utf-8")
+
+        # 6. Eliminar saltos de línea y espacios redundantes
+        content = re.sub(r'\s+', ' ', content).strip()
+
+        # 7. Mantener texto principal eliminando pies de correos genéricos o firmas
+        content = re.sub(r'(Google Ireland Ltd\..*|© \d{4} Google.*)', '', content, flags=re.DOTALL)
+
+        return content.strip()
+    except Exception as e:
+        print(f"Error limpiando contenido: {e}")
+        return ""
