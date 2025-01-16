@@ -3,7 +3,7 @@ import pandas as pd
 from functions import authenticate, get_emails, clean_email_content
 from googleapiclient.discovery import build
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import openai
 
 # Configurar la página de Streamlit
@@ -35,7 +35,7 @@ if st.button("📥 Obtener correos de la última semana"):
         emails_df['fecha'] = pd.to_datetime(emails_df['fecha'], errors='coerce', utc=True)
         
         # Filtrar correos de la última semana
-        one_week_ago = datetime.utcnow() - timedelta(days=7)
+        one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         recent_emails_df = emails_df[emails_df['fecha'] >= one_week_ago]
         
         if recent_emails_df.empty:
